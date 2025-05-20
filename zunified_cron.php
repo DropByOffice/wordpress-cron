@@ -89,7 +89,7 @@ function run_cron_and_log($url) {
             }
         }
     } else {
-        log_line("[$url ✅ Silent cron run (no output)]");
+        log_line("[$url] ✅ Silent cron run (no output)");
     }
 }
 
