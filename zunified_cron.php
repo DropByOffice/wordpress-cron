@@ -7,7 +7,7 @@
  * ✅ Captures wp-cron output and shows known job triggers (e.g. AutomateWoo)
  * ✅ Logs to zcron.log and warnings to zcron-warnings.log
  * ✅ Safe to drop into multiple sites (shared architecture ready)
- * @version 1.0.4
+ * @version 1.0.5
  */
 
 ini_set('display_errors', 0);
