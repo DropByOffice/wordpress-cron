@@ -4,23 +4,28 @@
  * ✅ Single + Multisite detection
  * ✅ Supports CLI (Cloudways cron) and browser trigger
  * ✅ Captures wp-cron output and shows known job triggers (e.g., AutomateWoo)
- * ✅ Logs to zcron-<Day>.log and warnings to zcron-warnings-<Day>.log
+ * ✅ Logs to zcron-{day}.log and warnings to zcron-warnings.log
+ * ✅ Deletes next day's log to limit bloat (7-day rotation)
  * ✅ Safe to drop into multiple sites (shared architecture ready)
- * @version 1.0.4
+ * @version 1.0.6
  */
 
-define('ZUNIFIED_VERSION', '1.0.7');
+define('ZUNIFIED_VERSION', '1.0.6');
 
 ini_set('display_errors', 0);
 error_reporting(E_ERROR | E_PARSE);
 
 // ================ CONFIG ===================
-$today         = gmdate('D'); // e.g., Mon, Tue, Wed
-$tomorrow      = gmdate('D', strtotime('+1 day'));
-$log_file      = __DIR__ . "/zcron-{$today}.log";
-$warnings_file = __DIR__ . "/zcron-warnings-{$today}.log";
-$expected_key  = 'cr0nx99';  // Shared access key
+$day = gmdate('D');
+$log_file = __DIR__ . "/zcron-$day.log";
+$warnings_file = __DIR__ . '/zcron-warnings.log';
+$expected_key  = 'cr0nx99';
 $known_hooks   = ['automatewoo', 'subscription', 'wc_'];
+
+// Purge tomorrow's log
+$next_day = gmdate('D', strtotime('+1 day'));
+$next_log = __DIR__ . "/zcron-$next_day.log";
+if (file_exists($next_log)) @unlink($next_log);
 
 // ================ INPUT HANDLING ============
 $key    = $_GET['key'] ?? ($_SERVER['argv'][1] ?? '');
@@ -31,10 +36,6 @@ $debug  = isset($_GET['debug']);
 $quiet  = isset($_GET['quiet']);
 $now_utc    = gmdate('Y-m-d H:i:s') . ' UTC';
 $remote_ip  = $_SERVER['REMOTE_ADDR'] ?? 'CLI';
-
-// Clean up tomorrow's log to maintain rolling window
-$tomorrow_log = __DIR__ . "/zcron-{$tomorrow}.log";
-if (file_exists($tomorrow_log)) @unlink($tomorrow_log);
 
 // ================ LOGGING ===================
 function log_line($msg, $also_echo = true) {
@@ -47,7 +48,7 @@ function log_line($msg, $also_echo = true) {
 }
 
 // =============== ACCESS CONTROL =============
-if ($key !== $expected_key && php_sapi_name() !== 'cli') {
+if ($key !== $expected_key) {
     log_line("❌ Access denied from [$remote_ip] using key [$key]", true);
     http_response_code(403);
     exit("Access Denied");
@@ -58,7 +59,7 @@ log_line("======================");
 log_line("Cron started at $now_utc with sleep=$sleep", true);
 log_line("Script running from: " . __DIR__, true);
 
-// ============== CAPTURE ANY STARTUP WARNINGS ============
+// ============== CAPTURE STARTUP WARNINGS =========
 ob_start();
 require_once __DIR__ . '/wp-load.php';
 $wp_warnings = trim(ob_get_clean());
@@ -88,25 +89,9 @@ function run_cron_and_log($url) {
             }
         }
     } else {
-        log_line("[$url] ✅ Silent cron completed.");
+        log_line("[$url ✅ Silent cron run (no output)]");
     }
 }
 
 if (defined('MULTISITE') && MULTISITE) {
-    log_line("🌐 Detected multisite environment.");
-    $sites = $wpdb->get_results("SELECT domain, path FROM {$wpdb->blogs} WHERE archived = '0' AND deleted = '0'");
-    foreach ($sites as $site) {
-        $url = 'https://' . $site->domain . rtrim($site->path, '/');
-        log_line("[$url] ➡️ Triggering...");
-        run_cron_and_log($url);
-        sleep($sleep);
-    }
-    log_line("✅ Multisite cron completed.");
-} else {
-    $url = get_option('siteurl');
-    log_line("🟢 Detected single-site: [$url]");
-    run_cron_and_log($url);
-    log_line("[$url] ✅ Single-site cron executed.");
-}
-
-log_line("=== Cron run completed at $now_utc ===");
+    log_line("
