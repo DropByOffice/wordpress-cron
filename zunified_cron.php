@@ -7,10 +7,10 @@
  * ✅ Logs to zcron-{day}.log and warnings to zcron-warnings.log
  * ✅ Deletes next day's log to limit bloat (7-day rotation)
  * ✅ Safe to drop into multiple sites (shared architecture ready)
- * @version 1.0.6
+ * @version 1.0.8
  */
 
-define('ZUNIFIED_VERSION', '1.0.6');
+define('ZUNIFIED_VERSION', '1.0.8');
 
 ini_set('display_errors', 0);
 error_reporting(E_ERROR | E_PARSE);
