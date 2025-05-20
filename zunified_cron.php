@@ -1,13 +1,14 @@
 <?php
-/**
+ /**
  * zunified_cron.php — upgraded unified WordPress cron trigger
  * ✅ Single + Multisite detection
  * ✅ Supports CLI (Cloudways cron) and browser trigger
  * ✅ Captures wp-cron output and shows known job triggers (e.g., AutomateWoo)
  * ✅ Logs to zcron.log and warnings to zcron-warnings.log
  * ✅ Safe to drop into multiple sites (shared architecture ready)
+ * @version 1.0.4
  */
-
+define('ZUNIFIED_VERSION', '1.0.4');
 define('ZUNIFIED_VERSION', '1.0.4');
 
 ini_set('display_errors', 0);
