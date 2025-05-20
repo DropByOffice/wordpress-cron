@@ -94,4 +94,20 @@ function run_cron_and_log($url) {
 }
 
 if (defined('MULTISITE') && MULTISITE) {
-    log_line("
+    log_line("🟢 Detected multisite environment.");
+    $sites = $wpdb->get_results("SELECT domain, path FROM {$wpdb->blogs} WHERE archived = '0' AND deleted = '0'");
+    foreach ($sites as $site) {
+        $url = 'https://' . $site->domain . rtrim($site->path, '/');
+        log_line("[$url] ➔ Triggering...");
+        run_cron_and_log($url);
+        sleep($sleep);
+    }
+    log_line("Multisite cron completed.");
+} else {
+    $url = get_option('siteurl');
+    log_line("🟢 Detected single-site: [$url]");
+    run_cron_and_log($url);
+    log_line("[$url] ✅ Single-site cron executed.");
+}
+
+log_line("=== Cron run completed at $now_utc ===");
