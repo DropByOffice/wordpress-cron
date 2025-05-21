@@ -4,30 +4,24 @@
  * ✅ Single + Multisite detection
  * ✅ Supports CLI (Cloudways cron) and browser trigger
  * ✅ Captures wp-cron output and shows known job triggers (e.g., AutomateWoo)
- * ✅ Logs to zcron-{day}.log and warnings to zcron-warnings.log
- * ✅ Deletes next day's log to limit bloat (7-day rotation)
+ * ✅ Logs to day-based zcron-[DAY].log and warnings to zcron-warnings.log
  * ✅ Safe to drop into multiple sites (shared architecture ready)
- * @version 1.0.8
+ * @version 1.0.9
  */
 
-define('ZUNIFIED_VERSION', '1.0.8');
+define('ZUNIFIED_VERSION', '1.0.9');
 
 ini_set('display_errors', 0);
 error_reporting(E_ERROR | E_PARSE);
 
-// ================ CONFIG ===================
-$day = gmdate('D');
-$log_file = __DIR__ . "/zcron-$day.log";
+// ================= CONFIG ====================
+$day         = strtolower(gmdate('D'));
+$log_file    = __DIR__ . "/zcron-$day.log";
 $warnings_file = __DIR__ . '/zcron-warnings.log';
-$expected_key  = 'cr0nx99';
+$expected_key  = 'cr0nx99';  // Shared access key
 $known_hooks   = ['automatewoo', 'subscription', 'wc_'];
 
-// Purge tomorrow's log
-$next_day = gmdate('D', strtotime('+1 day'));
-$next_log = __DIR__ . "/zcron-$next_day.log";
-if (file_exists($next_log)) @unlink($next_log);
-
-// ================ INPUT HANDLING ============
+// ================ INPUT HANDLING =============
 $key    = $_GET['key'] ?? ($_SERVER['argv'][1] ?? '');
 $sleep  = isset($_GET['sleep']) && is_numeric($_GET['sleep'])
           ? (int)$_GET['sleep']
@@ -37,7 +31,7 @@ $quiet  = isset($_GET['quiet']);
 $now_utc    = gmdate('Y-m-d H:i:s') . ' UTC';
 $remote_ip  = $_SERVER['REMOTE_ADDR'] ?? 'CLI';
 
-// ================ LOGGING ===================
+// ================= LOGGING ===================
 function log_line($msg, $also_echo = true) {
     global $log_file, $quiet;
     $ts   = gmdate('[Y-m-d H:i:s UTC]');
@@ -54,12 +48,10 @@ if ($key !== $expected_key) {
     exit("Access Denied");
 }
 
-log_line("[KEY REMINDER] To allow web-triggered access,  use: ?key=$expected_key", false);
-log_line("======================");
-log_line("Cron started at $now_utc with sleep=$sleep", true);
-log_line("Script running from: " . __DIR__, true);
+log_line("✅ Cron access granted with key [$key] from [$remote_ip]");
+log_line("Cron start at $now_utc with sleep delay: $sleep seconds");
 
-// ============== CAPTURE STARTUP WARNINGS =========
+// ============== CAPTURE WARNINGS =============
 ob_start();
 require_once __DIR__ . '/wp-load.php';
 $wp_warnings = trim(ob_get_clean());
@@ -85,11 +77,11 @@ function run_cron_and_log($url) {
         log_line("[$url] ➔ Output: " . str_replace("\n", ' ', $clean_response));
         foreach ($known_hooks as $hook) {
             if (stripos($clean_response, $hook) !== false) {
-                log_line("[$url] ✅ Matched: $hook");
+                log_line("[$url] ✅ Matched hook: $hook");
             }
         }
     } else {
-        log_line("[$url] ✅ Silent cron run (no output)");
+        log_line("[$url ✅ Silent cron run (no output)]");
     }
 }
 
@@ -111,3 +103,5 @@ if (defined('MULTISITE') && MULTISITE) {
 }
 
 log_line("=== Cron run completed at $now_utc ===");
+
+?>
